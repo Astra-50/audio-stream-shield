@@ -9,7 +9,155 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      audio_alerts: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          risk_level: Database["public"]["Enums"]["alert_risk_level"] | null
+          session_id: string
+          timestamp_in_stream: number | null
+          track_artist: string | null
+          track_title: string | null
+          user_id: string
+          was_resolved: boolean | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          risk_level?: Database["public"]["Enums"]["alert_risk_level"] | null
+          session_id: string
+          timestamp_in_stream?: number | null
+          track_artist?: string | null
+          track_title?: string | null
+          user_id: string
+          was_resolved?: boolean | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          risk_level?: Database["public"]["Enums"]["alert_risk_level"] | null
+          session_id?: string
+          timestamp_in_stream?: number | null
+          track_artist?: string | null
+          track_title?: string | null
+          user_id?: string
+          was_resolved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_alerts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "stream_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          discord_id: string | null
+          discord_username: string | null
+          email: string | null
+          id: string
+          subscription_tier:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discord_id?: string | null
+          discord_username?: string | null
+          email?: string | null
+          id: string
+          subscription_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discord_id?: string | null
+          discord_username?: string | null
+          email?: string | null
+          id?: string
+          subscription_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      stream_sessions: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          id: string
+          is_active: boolean | null
+          start_time: string | null
+          stream_title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          start_time?: string | null
+          stream_title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          start_time?: string | null
+          stream_title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          alert_sensitivity: number | null
+          auto_mute_enabled: boolean | null
+          created_at: string | null
+          discord_channel_id: string | null
+          id: string
+          panic_button_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+          webhook_url: string | null
+        }
+        Insert: {
+          alert_sensitivity?: number | null
+          auto_mute_enabled?: boolean | null
+          created_at?: string | null
+          discord_channel_id?: string | null
+          id?: string
+          panic_button_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          webhook_url?: string | null
+        }
+        Update: {
+          alert_sensitivity?: number | null
+          auto_mute_enabled?: boolean | null
+          created_at?: string | null
+          discord_channel_id?: string | null
+          id?: string
+          panic_button_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +166,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      alert_risk_level: "low" | "medium" | "high" | "critical"
+      subscription_tier: "free" | "pro" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +282,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_risk_level: ["low", "medium", "high", "critical"],
+      subscription_tier: ["free", "pro", "premium"],
+    },
   },
 } as const
