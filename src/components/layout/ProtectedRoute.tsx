@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigation } from './Navigation';
+import Navigation from './Navigation';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
