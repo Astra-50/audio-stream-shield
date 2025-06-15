@@ -1,75 +1,101 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { TooltipProvider } from "@/components/ui/tooltip"
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
-
-// Pages
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-import Billing from "./pages/Billing";
-import Testimonials from "./pages/Testimonials";
-import NotFound from "./pages/NotFound";
+import Auth from '@/pages/Auth';
+import Dashboard from '@/pages/Dashboard';
+import Settings from '@/pages/Settings';
+import Billing from '@/pages/Billing';
+import Testimonials from '@/pages/Testimonials';
+import NotFound from '@/pages/NotFound';
+import Navigation from '@/components/layout/Navigation';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import AudioSetup from '@/pages/AudioSetup';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>; // Or a spinner
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route 
-              path="/dashboard" 
-              element={
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <Dashboard />
+                    </main>
+                  </div>
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
+              } />
+              <Route path="/audio-setup" element={
                 <ProtectedRoute>
-                  <Settings />
+                  <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <AudioSetup />
+                    </main>
+                  </div>
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/billing" 
-              element={
+              } />
+              <Route path="/settings" element={
                 <ProtectedRoute>
-                  <Billing />
+                  <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <Settings />
+                    </main>
+                  </div>
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/testimonials" 
-              element={
+              } />
+              <Route path="/billing" element={
                 <ProtectedRoute>
-                  <Testimonials />
+                  <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <Billing />
+                    </main>
+                  </div>
                 </ProtectedRoute>
-              } 
-            />
-            {/* Redirect old paths to new structure */}
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
-            <Route path="/signup" element={<Navigate to="/auth" replace />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              } />
+              <Route path="/testimonials" element={
+                <ProtectedRoute>
+                  <div className="min-h-screen bg-gray-50">
+                    <Navigation />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <Testimonials />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
         </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
