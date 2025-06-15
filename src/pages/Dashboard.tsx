@@ -1,4 +1,4 @@
-
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useStreamSessions } from '@/hooks/useStreamSessions';
 import { useAudioAlerts } from '@/hooks/useAudioAlerts';
@@ -6,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Shield, Activity, AlertTriangle, Settings, Play, Pause, CheckCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import PanicButton from '@/components/discord/PanicButton';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { sessions, loading: sessionsLoading } = useStreamSessions();
   const { alerts, loading: alertsLoading, resolveAlert } = useAudioAlerts();
+  const [userSettings, setUserSettings] = useState(null);
 
   const activeSession = sessions.find(session => session.is_active);
   const todayAlerts = alerts.filter(alert => {
@@ -19,6 +22,28 @@ const Dashboard = () => {
     const alertDate = new Date(alert.created_at);
     return alertDate.toDateString() === today.toDateString();
   });
+
+  useEffect(() => {
+    if (user) {
+      fetchUserSettings();
+    }
+  }, [user]);
+
+  const fetchUserSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (data) {
+        setUserSettings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching user settings:', error);
+    }
+  };
 
   const handleResolveAlert = async (alertId: string) => {
     try {
@@ -79,9 +104,11 @@ const Dashboard = () => {
           <Badge variant="outline" className="text-green-600 border-green-600">
             Free Tier
           </Badge>
-          <Button size="sm">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
+          <Button size="sm" asChild>
+            <a href="/settings">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </a>
           </Button>
         </div>
       </div>
@@ -244,16 +271,16 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              className="h-20 flex flex-col gap-2 bg-red-600 hover:bg-red-700 text-white"
-              onClick={handlePanicButton}
-            >
-              <AlertTriangle className="h-6 w-6" />
-              <span>🚨 PANIC BUTTON</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex flex-col gap-2">
-              <Settings className="h-6 w-6" />
-              <span>Configure Alerts</span>
+            <PanicButton 
+              channelId={userSettings?.discord_channel_id}
+              size="lg"
+              variant="destructive"
+            />
+            <Button variant="outline" className="h-20 flex flex-col gap-2" asChild>
+              <a href="/settings">
+                <Settings className="h-6 w-6" />
+                <span>Configure Alerts</span>
+              </a>
             </Button>
             <Button variant="outline" className="h-20 flex flex-col gap-2">
               <Shield className="h-6 w-6" />

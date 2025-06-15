@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Save, Shield, Bot, Webhook } from 'lucide-react';
+import { Save, Shield, Bot, Webhook, Settings as SettingsIcon } from 'lucide-react';
+import BotSetup from '@/components/discord/BotSetup';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -90,123 +92,116 @@ const Settings = () => {
         </p>
       </div>
 
-      <div className="grid gap-6">
-        {/* Alert Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Alert Settings
-            </CardTitle>
-            <CardDescription>
-              Configure how sensitive AudioGuard should be when detecting risky audio
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <Label>Alert Sensitivity: {Math.round(settings.alert_sensitivity * 100)}%</Label>
-              <Slider
-                value={[settings.alert_sensitivity]}
-                onValueChange={(value) => setSettings({...settings, alert_sensitivity: value[0]})}
-                max={1}
-                min={0.1}
-                step={0.05}
-                className="w-full"
-              />
-              <p className="text-sm text-gray-600">
-                Higher sensitivity = more alerts, Lower sensitivity = fewer false positives
-              </p>
-            </div>
+      <Tabs defaultValue="alerts" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="alerts">Alert Settings</TabsTrigger>
+          <TabsTrigger value="discord">Discord Bot</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+        </TabsList>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Panic Button</Label>
-                <p className="text-sm text-gray-600">Enable emergency mute command</p>
+        <TabsContent value="alerts" className="space-y-6">
+          {/* Alert Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Alert Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure how sensitive AudioGuard should be when detecting risky audio
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label>Alert Sensitivity: {Math.round(settings.alert_sensitivity * 100)}%</Label>
+                <Slider
+                  value={[settings.alert_sensitivity]}
+                  onValueChange={(value) => setSettings({...settings, alert_sensitivity: value[0]})}
+                  max={1}
+                  min={0.1}
+                  step={0.05}
+                  className="w-full"
+                />
+                <p className="text-sm text-gray-600">
+                  Higher sensitivity = more alerts, Lower sensitivity = fewer false positives
+                </p>
               </div>
-              <Switch
-                checked={settings.panic_button_enabled}
-                onCheckedChange={(checked) => setSettings({...settings, panic_button_enabled: checked})}
-              />
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Auto-Mute (Pro Feature)</Label>
-                <p className="text-sm text-gray-600">Automatically mute detected audio</p>
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label>Panic Button</Label>
+                  <p className="text-sm text-gray-600">Enable emergency mute command</p>
+                </div>
+                <Switch
+                  checked={settings.panic_button_enabled}
+                  onCheckedChange={(checked) => setSettings({...settings, panic_button_enabled: checked})}
+                />
               </div>
-              <Switch
-                checked={settings.auto_mute_enabled}
-                onCheckedChange={(checked) => setSettings({...settings, auto_mute_enabled: checked})}
-                disabled
-              />
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Discord Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              Discord Integration
-            </CardTitle>
-            <CardDescription>
-              Configure where AudioGuard bot sends alerts
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="discord-channel">Discord Channel ID</Label>
-              <Input
-                id="discord-channel"
-                placeholder="123456789012345678"
-                value={settings.discord_channel_id}
-                onChange={(e) => setSettings({...settings, discord_channel_id: e.target.value})}
-              />
-              <p className="text-sm text-gray-600">
-                Right-click your Discord channel and copy ID
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label>Auto-Mute (Pro Feature)</Label>
+                  <p className="text-sm text-gray-600">Automatically mute detected audio</p>
+                </div>
+                <Switch
+                  checked={settings.auto_mute_enabled}
+                  onCheckedChange={(checked) => setSettings({...settings, auto_mute_enabled: checked})}
+                  disabled
+                />
+              </div>
 
-        {/* Webhook Integration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Webhook className="h-5 w-5" />
-              Webhook Integration
-            </CardTitle>
-            <CardDescription>
-              Send alerts to external services
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="webhook-url">Webhook URL</Label>
-              <Input
-                id="webhook-url"
-                placeholder="https://your-webhook-endpoint.com"
-                value={settings.webhook_url}
-                onChange={(e) => setSettings({...settings, webhook_url: e.target.value})}
-              />
-              <p className="text-sm text-gray-600">
-                AudioGuard will POST alert data to this endpoint
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex justify-end">
+                <Button onClick={saveSettings} disabled={loading}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {loading ? 'Saving...' : 'Save Alert Settings'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button onClick={saveSettings} disabled={loading}>
-            <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </div>
-      </div>
+        <TabsContent value="discord" className="space-y-6">
+          <BotSetup />
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-6">
+          {/* Webhook Integration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Webhook className="h-5 w-5" />
+                Webhook Integration
+              </CardTitle>
+              <CardDescription>
+                Send alerts to external services
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="webhook-url">Webhook URL</Label>
+                <Input
+                  id="webhook-url"
+                  placeholder="https://your-webhook-endpoint.com"
+                  value={settings.webhook_url}
+                  onChange={(e) => setSettings({...settings, webhook_url: e.target.value})}
+                />
+                <p className="text-sm text-gray-600">
+                  AudioGuard will POST alert data to this endpoint
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveSettings} disabled={loading}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {loading ? 'Saving...' : 'Save Webhook Settings'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
