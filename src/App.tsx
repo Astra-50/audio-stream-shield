@@ -11,6 +11,9 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
+import Billing from "./pages/Billing";
+import Testimonials from "./pages/Testimonials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/billing" 
+              element={
+                <ProtectedRoute>
+                  <Billing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/testimonials" 
+              element={
+                <ProtectedRoute>
+                  <Testimonials />
                 </ProtectedRoute>
               } 
             />

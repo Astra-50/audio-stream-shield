@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
 export interface AuthUser extends User {
-  user_metadata?: {
+  user_metadata: {
     discord_id?: string;
     discord_username?: string;
   };

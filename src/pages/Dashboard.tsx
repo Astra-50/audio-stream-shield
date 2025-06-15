@@ -1,50 +1,39 @@
 
 import { useAuth } from '@/hooks/useAuth';
+import { useStreamSessions } from '@/hooks/useStreamSessions';
+import { useAudioAlerts } from '@/hooks/useAudioAlerts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Activity, AlertTriangle, Settings, Play, Pause } from 'lucide-react';
+import { Shield, Activity, AlertTriangle, Settings, Play, Pause, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { sessions, loading: sessionsLoading } = useStreamSessions();
+  const { alerts, loading: alertsLoading, resolveAlert } = useAudioAlerts();
 
-  // Mock data for development
-  const mockStats = {
-    alertsToday: 3,
-    totalAlerts: 24,
-    activeSession: false,
-    lastStream: '2 hours ago'
+  const activeSession = sessions.find(session => session.is_active);
+  const todayAlerts = alerts.filter(alert => {
+    const today = new Date();
+    const alertDate = new Date(alert.created_at);
+    return alertDate.toDateString() === today.toDateString();
+  });
+
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await resolveAlert(alertId);
+      toast.success('Alert marked as resolved');
+    } catch (error) {
+      toast.error('Failed to resolve alert');
+    }
   };
 
-  const mockAlerts = [
-    {
-      id: '1',
-      trackTitle: 'Shape of You',
-      trackArtist: 'Ed Sheeran',
-      riskLevel: 'high' as const,
-      timestamp: '14:32',
-      confidenceScore: 0.92,
-      wasResolved: false
-    },
-    {
-      id: '2',
-      trackTitle: 'Blinding Lights',
-      trackArtist: 'The Weeknd',
-      riskLevel: 'critical' as const,
-      timestamp: '12:15',
-      confidenceScore: 0.98,
-      wasResolved: true
-    },
-    {
-      id: '3',
-      trackTitle: 'Watermelon Sugar',
-      trackArtist: 'Harry Styles',
-      riskLevel: 'medium' as const,
-      timestamp: '09:43',
-      confidenceScore: 0.76,
-      wasResolved: false
-    }
-  ];
+  const handlePanicButton = () => {
+    toast.error('🚨 PANIC BUTTON ACTIVATED - MUTE YOUR STREAM!', {
+      duration: 5000,
+    });
+  };
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -64,6 +53,16 @@ const Dashboard = () => {
       case 'low': return 'text-green-600';
       default: return 'text-gray-600';
     }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours === 1) return '1 hour ago';
+    return `${diffInHours} hours ago`;
   };
 
   return (
@@ -98,7 +97,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Stream Status</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {mockStats.activeSession ? 'Live' : 'Offline'}
+                  {activeSession ? 'Live' : 'Offline'}
                 </p>
               </div>
             </div>
@@ -113,7 +112,9 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Alerts Today</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.alertsToday}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {alertsLoading ? '...' : todayAlerts.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -127,7 +128,9 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Alerts</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.totalAlerts}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {alertsLoading ? '...' : alerts.length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -137,7 +140,7 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-2 bg-purple-100 rounded-lg">
-                {mockStats.activeSession ? (
+                {activeSession ? (
                   <Play className="h-6 w-6 text-purple-600" />
                 ) : (
                   <Pause className="h-6 w-6 text-purple-600" />
@@ -145,7 +148,11 @@ const Dashboard = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Last Stream</p>
-                <p className="text-2xl font-bold text-gray-900">{mockStats.lastStream}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {sessionsLoading ? '...' : 
+                   activeSession ? 'Live now' : 
+                   sessions.length > 0 ? formatTimeAgo(sessions[0].created_at) : 'Never'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -162,52 +169,68 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-3 h-3 rounded-full ${getRiskColor(alert.riskLevel)}`}
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {alert.trackTitle}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      by {alert.trackArtist} • {alert.timestamp}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <Badge
-                      variant="outline"
-                      className={getRiskTextColor(alert.riskLevel)}
-                    >
-                      {alert.riskLevel.toUpperCase()}
-                    </Badge>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {Math.round(alert.confidenceScore * 100)}% confidence
-                    </p>
-                  </div>
-                  {alert.wasResolved && (
-                    <Badge variant="outline" className="text-green-600 border-green-600">
-                      Resolved
-                    </Badge>
-                  )}
-                </div>
+            {alertsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-gray-600 mt-2">Loading alerts...</p>
               </div>
-            ))}
+            ) : alerts.length === 0 ? (
+              <div className="text-center py-8">
+                <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No alerts yet. Your stream is protected!</p>
+              </div>
+            ) : (
+              alerts.slice(0, 5).map((alert) => (
+                <div
+                  key={alert.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-3 h-3 rounded-full ${getRiskColor(alert.risk_level)}`}
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {alert.track_title || 'Unknown Track'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {alert.track_artist ? `by ${alert.track_artist}` : 'Unknown Artist'} • {formatTimeAgo(alert.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <Badge
+                        variant="outline"
+                        className={getRiskTextColor(alert.risk_level)}
+                      >
+                        {alert.risk_level.toUpperCase()}
+                      </Badge>
+                      {alert.confidence_score && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {Math.round(alert.confidence_score * 100)}% confidence
+                        </p>
+                      )}
+                    </div>
+                    {alert.was_resolved ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Resolved
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResolveAlert(alert.id)}
+                      >
+                        Resolve
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-          
-          {mockAlerts.length === 0 && (
-            <div className="text-center py-8">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No alerts yet. Your stream is protected!</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -221,9 +244,12 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="h-20 flex flex-col gap-2 bg-accent hover:bg-accent/90">
+            <Button 
+              className="h-20 flex flex-col gap-2 bg-red-600 hover:bg-red-700 text-white"
+              onClick={handlePanicButton}
+            >
               <AlertTriangle className="h-6 w-6" />
-              <span>Panic Button</span>
+              <span>🚨 PANIC BUTTON</span>
             </Button>
             <Button variant="outline" className="h-20 flex flex-col gap-2">
               <Settings className="h-6 w-6" />
