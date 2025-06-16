@@ -23,43 +23,23 @@ export const useAudioAlerts = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchAlerts();
-      setupRealtimeSubscription();
-    }
-  }, [user]);
-
-  const fetchAlerts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('audio_alerts')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      setAlerts(data || []);
-    } catch (err) {
-      console.error('Error fetching audio alerts:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch alerts');
-    } finally {
+    if (!user) {
       setLoading(false);
+      return;
     }
-  };
 
-  const setupRealtimeSubscription = () => {
+    fetchAlerts();
+    
+    // Set up realtime subscription
     const channel = supabase
-      .channel('audio_alerts_changes')
+      .channel(`audio_alerts_${user.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'audio_alerts',
-          filter: `user_id=eq.${user?.id}`
+          filter: `user_id=eq.${user.id}`
         },
         (payload) => {
           console.log('New alert received:', payload);
@@ -72,7 +52,7 @@ export const useAudioAlerts = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'audio_alerts',
-          filter: `user_id=eq.${user?.id}`
+          filter: `user_id=eq.${user.id}`
         },
         (payload) => {
           setAlerts(prev => prev.map(alert => 
@@ -82,9 +62,33 @@ export const useAudioAlerts = () => {
       )
       .subscribe();
 
+    // Cleanup function
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [user?.id]); // Only depend on user.id to prevent unnecessary re-subscriptions
+
+  const fetchAlerts = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('audio_alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      setAlerts(data || []);
+    } catch (err) {
+      console.error('Error fetching audio alerts:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch alerts');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resolveAlert = async (alertId: string) => {
