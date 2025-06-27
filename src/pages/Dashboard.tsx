@@ -1,47 +1,30 @@
-import { useEffect, useState } from 'react';
+
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useStreamSessions } from '@/hooks/useStreamSessions';
 import { useAudioAlerts } from '@/hooks/useAudioAlerts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Activity, AlertTriangle, Settings, Play, Pause, CheckCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, Activity, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import PanicButton from '@/components/discord/PanicButton';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const { sessions, loading: sessionsLoading } = useStreamSessions();
-  const { alerts, loading: alertsLoading, resolveAlert } = useAudioAlerts();
-  const [userSettings, setUserSettings] = useState(null);
+  const { user } = useAuth();  
+  const { alerts, loading, error, resolveAlert, refetch } = useAudioAlerts();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const activeSession = sessions.find(session => session.is_active);
-  const todayAlerts = alerts.filter(alert => {
-    const today = new Date();
-    const alertDate = new Date(alert.created_at);
-    return alertDate.toDateString() === today.toDateString();
-  });
-
-  useEffect(() => {
-    if (user) {
-      fetchUserSettings();
-    }
-  }, [user]);
-
-  const fetchUserSettings = async () => {
+  const handleRefresh = async () => {
+    setRefreshing(true);
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (data) {
-        setUserSettings(data);
-      }
+      await refetch();
+      toast.success('Dashboard refreshed!');
     } catch (error) {
-      console.error('Error fetching user settings:', error);
+      toast.error('Failed to refresh dashboard');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -54,241 +37,218 @@ const Dashboard = () => {
     }
   };
 
-  const handlePanicButton = () => {
-    toast.error('🚨 PANIC BUTTON ACTIVATED - MUTE YOUR STREAM!', {
-      duration: 5000,
-    });
-  };
-
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+  const getRiskColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getRiskTextColor = (risk: string) => {
-    switch (risk) {
-      case 'critical': return 'text-red-600';
-      case 'high': return 'text-orange-600';
-      case 'medium': return 'text-yellow-600';
-      case 'low': return 'text-green-600';
-      default: return 'text-gray-600';
-    }
-  };
+  const activeAlerts = alerts.filter(alert => !alert.was_resolved);
+  const resolvedAlerts = alerts.filter(alert => alert.was_resolved);
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours === 1) return '1 hour ago';
-    return `${diffInHours} hours ago`;
-  };
+  if (loading && alerts.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center space-y-4">
+            <LoadingSpinner size="lg" />
+            <p className="text-gray-600">Loading your dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Dashboard Error
+            </CardTitle>
+            <CardDescription>
+              Failed to load dashboard data: {error}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Welcome back, {user?.email?.split('@')[0] || 'Streamer'}! Monitor your stream's DMCA risk in real-time.
+            Welcome back, {user?.email}! Monitor your stream protection in real-time.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-green-600 border-green-600">
-            Free Tier
-          </Badge>
-          <Button size="sm" asChild>
-            <a href="/settings">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </a>
-          </Button>
-        </div>
+        <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Status Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Shield className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Stream Status</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {activeSession ? 'Live' : 'Offline'}
-                </p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Protection Status</CardTitle>
+            <Shield className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">Active</div>
+            <p className="text-xs text-gray-600">AudioGuard is monitoring your stream</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Activity className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Alerts Today</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {alertsLoading ? '...' : todayAlerts.length}
-                </p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
+            <Activity className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeAlerts.length}</div>
+            <p className="text-xs text-gray-600">Require your attention</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Alerts</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {alertsLoading ? '...' : alerts.length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                {activeSession ? (
-                  <Play className="h-6 w-6 text-purple-600" />
-                ) : (
-                  <Pause className="h-6 w-6 text-purple-600" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Last Stream</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {sessionsLoading ? '...' : 
-                   activeSession ? 'Live now' : 
-                   sessions.length > 0 ? formatTimeAgo(sessions[0].created_at) : 'Never'}
-                </p>
-              </div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{alerts.length}</div>
+            <p className="text-xs text-gray-600">Since you started using AudioGuard</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Alerts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Audio Alerts</CardTitle>
-          <CardDescription>
-            Latest DMCA risk detections from your streams
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {alertsLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="text-gray-600 mt-2">Loading alerts...</p>
-              </div>
-            ) : alerts.length === 0 ? (
-              <div className="text-center py-8">
-                <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No alerts yet. Your stream is protected!</p>
-              </div>
-            ) : (
-              alerts.slice(0, 5).map((alert) => (
-                <div
-                  key={alert.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-3 h-3 rounded-full ${getRiskColor(alert.risk_level)}`}
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {alert.track_title || 'Unknown Track'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {alert.track_artist ? `by ${alert.track_artist}` : 'Unknown Artist'} • {formatTimeAgo(alert.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <Badge
-                        variant="outline"
-                        className={getRiskTextColor(alert.risk_level)}
-                      >
-                        {alert.risk_level.toUpperCase()}
-                      </Badge>
-                      {alert.confidence_score && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {Math.round(alert.confidence_score * 100)}% confidence
-                        </p>
-                      )}
-                    </div>
-                    {alert.was_resolved ? (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Resolved
-                      </Badge>
-                    ) : (
-                      <Button
+      {/* Alert Management */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Active Alerts ({activeAlerts.length})</TabsTrigger>
+          <TabsTrigger value="resolved">Resolved ({resolvedAlerts.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-4">
+          {activeAlerts.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <CheckCircle className="h-12 w-12 text-green-600 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">All Clear!</h3>
+                <p className="text-gray-600 text-center">
+                  No active DMCA alerts. Your stream is protected and safe to continue.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {activeAlerts.map((alert) => (
+                <Card key={alert.id} className="border-l-4 border-l-red-500">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge className={getRiskColor(alert.risk_level)}>
+                          {alert.risk_level.toUpperCase()}
+                        </Badge>
+                        <div>
+                          <CardTitle className="text-lg">
+                            {alert.track_title || 'Unknown Track'}
+                          </CardTitle>
+                          <CardDescription>
+                            by {alert.track_artist || 'Unknown Artist'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => handleResolveAlert(alert.id)}
                         size="sm"
                         variant="outline"
-                        onClick={() => handleResolveAlert(alert.id)}
                       >
-                        Resolve
+                        Mark Resolved
                       </Button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        Detected: {new Date(alert.created_at).toLocaleString()}
+                      </span>
+                      {alert.confidence_score && (
+                        <span>
+                          Confidence: {Math.round(alert.confidence_score * 100)}%
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Manage your AudioGuard protection
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <PanicButton 
-              channelId={userSettings?.discord_channel_id}
-              size="lg"
-              variant="destructive"
-            />
-            <Button variant="outline" className="h-20 flex flex-col gap-2" asChild>
-              <a href="/settings">
-                <Settings className="h-6 w-6" />
-                <span>Configure Alerts</span>
-              </a>
-            </Button>
-            <Button variant="outline" className="h-20 flex flex-col gap-2">
-              <Shield className="h-6 w-6" />
-              <span>Start Protection</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="resolved" className="space-y-4">
+          {resolvedAlerts.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Activity className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Resolved Alerts</h3>
+                <p className="text-gray-600 text-center">
+                  Resolved alerts will appear here for your reference.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {resolvedAlerts.map((alert) => (
+                <Card key={alert.id} className="opacity-75">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary">RESOLVED</Badge>
+                      <div>
+                        <CardTitle className="text-lg">
+                          {alert.track_title || 'Unknown Track'}
+                        </CardTitle>
+                        <CardDescription>
+                          by {alert.track_artist || 'Unknown Artist'}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        Detected: {new Date(alert.created_at).toLocaleString()}
+                      </span>
+                      {alert.confidence_score && (
+                        <span>
+                          Confidence: {Math.round(alert.confidence_score * 100)}%
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

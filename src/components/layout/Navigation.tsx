@@ -17,7 +17,7 @@ const Navigation = () => {
   };
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: Home },
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/audio-setup', label: 'Audio Setup', icon: Headphones },
     { href: '/settings', label: 'Settings', icon: Settings },
     { href: '/billing', label: 'Billing', icon: CreditCard },
@@ -54,7 +54,7 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2">
               <Shield className="h-8 w-8 text-red-600" />
               <span className="text-xl font-bold text-gray-900">AudioGuard</span>
             </Link>

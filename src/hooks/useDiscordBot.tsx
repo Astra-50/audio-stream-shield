@@ -29,7 +29,7 @@ export const useDiscordBot = () => {
       toast.success('Test alert sent to Discord! Check your channel.');
     } catch (error) {
       console.error('Error sending test alert:', error);
-      toast.error('Failed to send test alert');
+      toast.error('Failed to send test alert. Please check your Discord bot setup.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,8 @@ export const useDiscordBot = () => {
   };
 
   const getBotInviteUrl = () => {
-    const applicationId = 'YOUR_DISCORD_APPLICATION_ID'; // This will be replaced with actual ID
+    // This will need to be updated with actual Discord Application ID
+    const applicationId = process.env.DISCORD_APPLICATION_ID || 'YOUR_DISCORD_APPLICATION_ID';
     const permissions = '2048'; // Send Messages permission
     return `https://discord.com/api/oauth2/authorize?client_id=${applicationId}&permissions=${permissions}&scope=bot%20applications.commands`;
   };
