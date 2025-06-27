@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -54,13 +53,17 @@ serve(async (req) => {
         return await handleSlashCommand(body, supabase)
       }
 
-      // Handle webhook calls from our app (for sending alerts)
+      // Handle webhook calls from our app
       if (body.action === 'send_alert') {
         return await sendAlert(body, supabase)
       }
 
       if (body.action === 'test_alert') {
         return await sendTestAlert(body, supabase)
+      }
+
+      if (body.action === 'get_invite_url') {
+        return await getBotInviteUrl()
       }
     }
 
@@ -77,6 +80,24 @@ serve(async (req) => {
     })
   }
 })
+
+async function getBotInviteUrl() {
+  const applicationId = Deno.env.get('DISCORD_APPLICATION_ID')
+  
+  if (!applicationId) {
+    return new Response(JSON.stringify({ error: 'Discord Application ID not configured' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  const permissions = '2048' // Send Messages permission
+  const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${applicationId}&permissions=${permissions}&scope=bot%20applications.commands`
+  
+  return new Response(JSON.stringify({ inviteUrl }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  })
+}
 
 async function handleSlashCommand(interaction: DiscordInteraction, supabase: any) {
   const commandName = interaction.data?.name

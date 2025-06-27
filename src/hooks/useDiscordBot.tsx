@@ -57,11 +57,24 @@ export const useDiscordBot = () => {
     }
   };
 
-  const getBotInviteUrl = () => {
-    // This will need to be updated with actual Discord Application ID
-    const applicationId = process.env.DISCORD_APPLICATION_ID || 'YOUR_DISCORD_APPLICATION_ID';
-    const permissions = '2048'; // Send Messages permission
-    return `https://discord.com/api/oauth2/authorize?client_id=${applicationId}&permissions=${permissions}&scope=bot%20applications.commands`;
+  const getBotInviteUrl = async () => {
+    try {
+      // Get the Discord Application ID from our edge function
+      const { data, error } = await supabase.functions.invoke('discord-bot', {
+        body: {
+          action: 'get_invite_url'
+        }
+      });
+
+      if (error) throw error;
+
+      return data.inviteUrl;
+    } catch (error) {
+      console.error('Error getting bot invite URL:', error);
+      // Fallback to a generic message if we can't get the URL
+      toast.error('Unable to generate Discord bot invite. Please contact support.');
+      return null;
+    }
   };
 
   return {
