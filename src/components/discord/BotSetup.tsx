@@ -18,10 +18,13 @@ const BotSetup = () => {
   const [channelId, setChannelId] = useState('');
   const [botConnected, setBotConnected] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [loadingInvite, setLoadingInvite] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchBotSettings();
+      loadInviteUrl();
     }
   }, [user]);
 
@@ -44,6 +47,18 @@ const BotSetup = () => {
       }
     } catch (error) {
       console.error('Error fetching bot settings:', error);
+    }
+  };
+
+  const loadInviteUrl = async () => {
+    setLoadingInvite(true);
+    try {
+      const url = await getBotInviteUrl();
+      setInviteUrl(url);
+    } catch (error) {
+      console.error('Error loading invite URL:', error);
+    } finally {
+      setLoadingInvite(false);
     }
   };
 
@@ -125,12 +140,23 @@ const BotSetup = () => {
             Click the button below to add AudioGuard bot to your Discord server with the necessary permissions.
           </p>
           <div className="ml-8">
-            <Button asChild variant="outline">
-              <a href={getBotInviteUrl()} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Invite Bot to Discord
-              </a>
-            </Button>
+            {loadingInvite ? (
+              <Button disabled variant="outline">
+                <TestTube className="h-4 w-4 mr-2 animate-spin" />
+                Loading...
+              </Button>
+            ) : inviteUrl ? (
+              <Button asChild variant="outline">
+                <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Invite Bot to Discord
+                </a>
+              </Button>
+            ) : (
+              <div className="text-sm text-orange-600">
+                ⚠️ Discord bot not configured yet. Please contact support.
+              </div>
+            )}
           </div>
         </div>
 
